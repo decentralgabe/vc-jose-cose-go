@@ -255,9 +255,10 @@ func VerifyVerifiableCredential(sdJWT string, key jwk.Key) (*credential.Verifiab
 		return nil, fmt.Errorf("failed to marshal claims: %w", err)
 	}
 
-	var vc credential.VerifiableCredential
-	if err = json.Unmarshal(vcBytes, &vc); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal VC: %w", err)
+	// Unmarshal the payload into VerifiableCredential
+	vc, err := credential.DecodeVC(vcBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal VerifiableCredential: %w", err)
 	}
 
 	// Extract signature from SD-JWT
@@ -275,7 +276,7 @@ func VerifyVerifiableCredential(sdJWT string, key jwk.Key) (*credential.Verifiab
 		return nil, fmt.Errorf("invalid JWT signature: %w", err)
 	}
 
-	return &vc, nil
+	return vc, nil
 }
 
 // SignVerifiablePresentation creates an SD-JWT from a VerifiablePresentation, making specified fields
@@ -389,9 +390,10 @@ func VerifyVerifiablePresentation(sdJWT string, key jwk.Key) (*credential.Verifi
 		return nil, fmt.Errorf("failed to marshal claims: %w", err)
 	}
 
-	var vp credential.VerifiablePresentation
-	if err = json.Unmarshal(vpBytes, &vp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal VP: %w", err)
+	// Unmarshal the payload into VerifiablePresentation
+	vp, err := credential.DecodeVP(vpBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal VerifiablePresentation: %w", err)
 	}
 
 	// Extract signature from SD-JWT
@@ -409,5 +411,5 @@ func VerifyVerifiablePresentation(sdJWT string, key jwk.Key) (*credential.Verifi
 		return nil, fmt.Errorf("invalid JWT signature: %w", err)
 	}
 
-	return &vp, nil
+	return vp, nil
 }

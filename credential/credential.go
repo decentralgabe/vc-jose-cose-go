@@ -42,6 +42,17 @@ type VerifiableCredential struct {
 	CredentialStatus  util.SingleOrArray[any]    `json:"credentialStatus,omitempty"`
 	TermsOfUse        util.SingleOrArray[any]    `json:"termsOfUse,omitempty"`
 	Evidence          util.SingleOrArray[any]    `json:"evidence,omitempty"`
+
+	// JWT claims that may be present in the credential
+	Iss string `json:"iss,omitempty"`
+	Sub string `json:"sub,omitempty"`
+	Jti string `json:"jti,omitempty"`
+	Typ string `json:"typ,omitempty"`
+	Cty string `json:"cty,omitempty"`
+	Aud string `json:"aud,omitempty"`
+	Iat any    `json:"iat,omitempty"`
+	Exp any    `json:"exp,omitempty"`
+	Nbf any    `json:"nbf,omitempty"`
 }
 
 // ToMap converts the VerifiableCredential to a map[string]any
@@ -172,6 +183,17 @@ type VerifiablePresentation struct {
 	ID                   string                     `json:"id,omitempty"`
 	Holder               *IssuerHolder              `json:"holder,omitempty"`
 	VerifiableCredential []VerifiableCredential     `json:"verifiableCredential,omitempty"`
+
+	// JWT claims that may be present in the presentation
+	Iss string `json:"iss,omitempty"`
+	Sub string `json:"sub,omitempty"`
+	Jti string `json:"jti,omitempty"`
+	Typ string `json:"typ,omitempty"`
+	Cty string `json:"cty,omitempty"`
+	Aud string `json:"aud,omitempty"`
+	Iat any    `json:"iat,omitempty"`
+	Exp any    `json:"exp,omitempty"`
+	Nbf any    `json:"nbf,omitempty"`
 }
 
 // ToMap converts the VerifiablePresentation to a map[string]any

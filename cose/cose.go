@@ -118,13 +118,13 @@ func VerifyVerifiableCredential(payload []byte, key jwk.Key) (*credential.Verifi
 		return nil, fmt.Errorf("failed to verify COSE signature: %w", err)
 	}
 
-	// Unmarshal the payload
-	var vc credential.VerifiableCredential
-	if err = json.Unmarshal(message.Payload, &vc); err != nil {
+	// Unmarshal the payload into VerifiableCredential
+	vc, err := credential.DecodeVC(message.Payload)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiableCredential: %w", err)
 	}
 
-	return &vc, nil
+	return vc, nil
 }
 
 // getCOSESigner returns a COSE Signer for the provided JWK key.
@@ -231,11 +231,11 @@ func VerifyVerifiablePresentation(payload []byte, key jwk.Key) (*credential.Veri
 		return nil, fmt.Errorf("failed to verify COSE signature: %w", err)
 	}
 
-	// Unmarshal the payload
-	var vp credential.VerifiablePresentation
-	if err = json.Unmarshal(message.Payload, &vp); err != nil {
+	// Unmarshal the payload into VerifiablePresentation
+	vp, err := credential.DecodeVP(message.Payload)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiablePresentation: %w", err)
 	}
 
-	return &vp, nil
+	return vp, nil
 }

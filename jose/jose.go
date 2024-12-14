@@ -105,12 +105,12 @@ func VerifyVerifiableCredential(jwt string, key jwk.Key) (*credential.Verifiable
 	}
 
 	// Unmarshal the payload into VerifiableCredential
-	var vc credential.VerifiableCredential
-	if err := json.Unmarshal(payload, &vc); err != nil {
+	vc, err := credential.DecodeVC(payload)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiableCredential: %w", err)
 	}
 
-	return &vc, nil
+	return vc, nil
 }
 
 // SignVerifiablePresentation dynamically signs a VerifiablePresentation based on the key type.
@@ -229,10 +229,10 @@ func VerifyVerifiablePresentation(jwt string, key jwk.Key) (*credential.Verifiab
 	}
 
 	// Unmarshal the payload into VerifiablePresentation
-	var vp credential.VerifiablePresentation
-	if err := json.Unmarshal(payload, &vp); err != nil {
+	vp, err := credential.DecodeVP(payload)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiablePresentation: %w", err)
 	}
 
-	return &vp, nil
+	return vp, nil
 }
