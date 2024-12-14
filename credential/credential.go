@@ -1,6 +1,7 @@
 package credential
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 
@@ -197,4 +198,26 @@ func (vp *VerifiablePresentation) IsEmpty() bool {
 
 func (vp *VerifiablePresentation) IsValid() error {
 	return util.NewValidator().Struct(vp)
+}
+
+// DecodeVC decodes a VerifiableCredential from a byte slice and returns an error if the data contains unknown fields.
+func DecodeVC(data []byte) (*VerifiableCredential, error) {
+	var vc VerifiableCredential
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&vc); err != nil {
+		return nil, fmt.Errorf("unknown field in credential: %w", err)
+	}
+	return &vc, nil
+}
+
+// DecodeVP decodes a VerifiablePresentation from a byte slice and returns an error if the data contains unknown fields.
+func DecodeVP(data []byte) (*VerifiablePresentation, error) {
+	var vp VerifiablePresentation
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&vp); err != nil {
+		return nil, fmt.Errorf("unknown field in presentation: %w", err)
+	}
+	return &vp, nil
 }

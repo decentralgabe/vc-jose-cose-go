@@ -207,6 +207,7 @@ func SignVerifiablePresentation(vp credential.VerifiablePresentation, key jwk.Ke
 }
 
 // VerifyVerifiablePresentation verifies a VerifiablePresentation JWT using the provided key.
+// TODO(gabe) this does not yet validate signatures of credentials in the presentation
 func VerifyVerifiablePresentation(jwt string, key jwk.Key) (*credential.VerifiablePresentation, error) {
 	if jwt == "" {
 		return nil, errors.New("JWT is required")

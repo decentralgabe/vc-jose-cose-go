@@ -200,6 +200,7 @@ func SignVerifiablePresentation(vp credential.VerifiablePresentation, key jwk.Ke
 }
 
 // VerifyVerifiablePresentation verifies a COSE-signed VerifiablePresentation using the provided key.
+// TODO(gabe) this does not yet validate signatures of credentials in the presentation
 func VerifyVerifiablePresentation(payload []byte, key jwk.Key) (*credential.VerifiablePresentation, error) {
 	if payload == nil {
 		return nil, errors.New("payload is required")

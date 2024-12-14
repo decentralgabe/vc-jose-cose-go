@@ -280,6 +280,7 @@ func VerifyVerifiableCredential(sdJWT string, key jwk.Key) (*credential.Verifiab
 
 // SignVerifiablePresentation creates an SD-JWT from a VerifiablePresentation, making specified fields
 // selectively disclosable according to the provided paths.
+// TODO(gabe) this does not yet validate signatures of credentials in the presentation
 func SignVerifiablePresentation(vp credential.VerifiablePresentation, disclosurePaths []DisclosurePath, key jwk.Key) (*string, error) {
 	if vp.IsEmpty() {
 		return nil, errors.New("VerifiablePresentation is empty")
