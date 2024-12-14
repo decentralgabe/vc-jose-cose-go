@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-
 	"github.com/goccy/go-json"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -17,6 +16,11 @@ import (
 const (
 	VCCOSEType = "application/vc+cose"
 	VPCOSEType = "application/vp+cose"
+)
+
+var (
+	VCCOSEContentType = "application/" + credential.VCContentType
+	VPCOSEContentType = "application/" + credential.VPContentType
 )
 
 // SignVerifiableCredential signs a VerifiableCredential using COSE.
@@ -42,7 +46,7 @@ func SignVerifiableCredential(vc credential.VerifiableCredential, key jwk.Key) (
 	message := cose.NewSign1Message()
 	message.Headers.Protected.SetAlgorithm(signer.Algorithm())
 	_, _ = message.Headers.Protected.SetType(VCCOSEType)
-	message.Headers.Protected[cose.HeaderLabelContentType] = "application/" + credential.VCContentType
+	message.Headers.Protected[cose.HeaderLabelContentType] = VCCOSEContentType
 	message.Headers.Protected[cose.HeaderLabelKeyID] = []byte(key.KeyID())
 
 	// Convert VC to a JSON object
@@ -118,6 +122,16 @@ func VerifyVerifiableCredential(payload []byte, key jwk.Key) (*credential.Verifi
 		return nil, fmt.Errorf("failed to verify COSE signature: %w", err)
 	}
 
+	// Check expected cty and typ headers
+	cty := message.Headers.Protected[cose.HeaderLabelContentType]
+	if cty != VCCOSEContentType {
+		return nil, fmt.Errorf("unexpected content type: %s", cty)
+	}
+	typ := message.Headers.Protected[cose.HeaderLabelType]
+	if typ != VCCOSEType {
+		return nil, fmt.Errorf("unexpected type: %s", typ)
+	}
+
 	// Unmarshal the payload into VerifiableCredential
 	vc, err := credential.DecodeVC(message.Payload)
 	if err != nil {
@@ -176,7 +190,7 @@ func SignVerifiablePresentation(vp credential.VerifiablePresentation, key jwk.Ke
 	message := cose.NewSign1Message()
 	message.Headers.Protected.SetAlgorithm(signer.Algorithm())
 	_, _ = message.Headers.Protected.SetType(VPCOSEType)
-	message.Headers.Protected[cose.HeaderLabelContentType] = "application/" + credential.VPContentType
+	message.Headers.Protected[cose.HeaderLabelContentType] = VPCOSEContentType
 	message.Headers.Protected[cose.HeaderLabelKeyID] = []byte(key.KeyID())
 
 	// Convert VP to a JSON object
@@ -229,6 +243,16 @@ func VerifyVerifiablePresentation(payload []byte, key jwk.Key) (*credential.Veri
 
 	if err = message.Verify(nil, verifier); err != nil {
 		return nil, fmt.Errorf("failed to verify COSE signature: %w", err)
+	}
+
+	// Check expected cty and typ headers
+	cty := message.Headers.Protected[cose.HeaderLabelContentType]
+	if cty != VPCOSEContentType {
+		return nil, fmt.Errorf("unexpected content type: %s", cty)
+	}
+	typ := message.Headers.Protected[cose.HeaderLabelType]
+	if typ != VPCOSEType {
+		return nil, fmt.Errorf("unexpected type: %s", typ)
 	}
 
 	// Unmarshal the payload into VerifiablePresentation

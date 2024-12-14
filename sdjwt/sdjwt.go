@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelFraser99/go-sd-jwt/disclosure"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/decentralgabe/vc-jose-cose-go/credential"
 )
@@ -53,16 +54,16 @@ func SignVerifiableCredential(vc credential.VerifiableCredential, disclosurePath
 
 	// Add standard claims
 	if !vc.Issuer.IsEmpty() {
-		vcMap["iss"] = vc.Issuer.ID()
+		vcMap[jwt.IssuerKey] = vc.Issuer.ID()
 	}
 	if vc.ID != "" {
-		vcMap["jti"] = vc.ID
+		vcMap[jwt.JwtIDKey] = vc.ID
 	}
 	if vc.ValidFrom != "" {
-		vcMap["iat"] = vc.ValidFrom
+		vcMap[jwt.IssuedAtKey] = vc.ValidFrom
 	}
 	if vc.ValidUntil != "" {
-		vcMap["exp"] = vc.ValidUntil
+		vcMap[jwt.ExpirationKey] = vc.ValidUntil
 	}
 
 	// Process disclosures
@@ -82,10 +83,10 @@ func SignVerifiableCredential(vc credential.VerifiableCredential, disclosurePath
 	// Add protected header values
 	jwsHeaders := jws.NewHeaders()
 	headers := map[string]string{
-		"typ": VCSDJWTType,
-		"cty": credential.VCContentType,
-		"alg": key.Algorithm().String(),
-		"kid": key.KeyID(),
+		jws.TypeKey:        VCSDJWTType,
+		jws.ContentTypeKey: credential.VCContentType,
+		jws.AlgorithmKey:   key.Algorithm().String(),
+		jws.KeyIDKey:       key.KeyID(),
 	}
 	for k, v := range headers {
 		if err = jwsHeaders.Set(k, v); err != nil {
@@ -183,10 +184,11 @@ func processPath(data map[string]any, pathParts []string, disclosures *[]disclos
 
 			// Add hash to _sd array
 			hash := d.Hash(crypto.SHA256.New())
-			if data["_sd"] == nil {
-				data["_sd"] = []string{string(hash)}
+			sdPrefix := "_sd"
+			if data[sdPrefix] == nil {
+				data[sdPrefix] = []string{string(hash)}
 			} else {
-				data["_sd"] = append(data["_sd"].([]string), string(hash))
+				data[sdPrefix] = append(data[sdPrefix].([]string), string(hash))
 			}
 			delete(data, field)
 		}
@@ -267,13 +269,30 @@ func VerifyVerifiableCredential(sdJWT string, key jwk.Key) (*credential.Verifiab
 		return nil, errors.New("invalid SD-JWT format")
 	}
 
-	jwsParts := strings.Split(parts[0], ".")
+	plainJWS := parts[0]
+	jwsParts := strings.Split(plainJWS, ".")
 	if len(jwsParts) != 3 {
-		return nil, errors.New("invalid JWT format")
+		return nil, errors.New("invalid JWS format")
 	}
 
-	if _, err = jws.Verify([]byte(parts[0]), jws.WithKey(key.Algorithm(), key)); err != nil {
-		return nil, fmt.Errorf("invalid JWT signature: %w", err)
+	if _, err := jws.Verify([]byte(plainJWS), jws.WithKey(key.Algorithm(), key)); err != nil {
+		return nil, fmt.Errorf("invalid JWS signature: %w", err)
+	}
+
+	// Check expected cty and typ headers
+	parsed, err := jws.Parse([]byte(plainJWS))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JWS payload: %w", err)
+	}
+	if len(parsed.Signatures()) != 1 {
+		return nil, errors.New("expected exactly one signature")
+	}
+	headers := parsed.Signatures()[0].ProtectedHeaders()
+	if typ := headers.Type(); typ != VCSDJWTType {
+		return nil, fmt.Errorf("unexpected type: %s", typ)
+	}
+	if cty := headers.ContentType(); cty != credential.VCContentType {
+		return nil, fmt.Errorf("unexpected content type: %s", cty)
 	}
 
 	return vc, nil
@@ -307,10 +326,10 @@ func SignVerifiablePresentation(vp credential.VerifiablePresentation, disclosure
 
 	// Add standard claims
 	if vp.ID != "" {
-		vpMap["jti"] = vp.ID
+		vpMap[jwt.JwtIDKey] = vp.ID
 	}
 	if !vp.Holder.IsEmpty() {
-		vpMap["iss"] = vp.Holder.ID()
+		vpMap[jwt.IssuerKey] = vp.Holder.ID()
 	}
 
 	// Process disclosures
@@ -330,10 +349,10 @@ func SignVerifiablePresentation(vp credential.VerifiablePresentation, disclosure
 	// Add protected header values
 	jwsHeaders := jws.NewHeaders()
 	headers := map[string]string{
-		"typ": VPSDJWTType,
-		"cty": credential.VPContentType,
-		"alg": key.Algorithm().String(),
-		"kid": key.KeyID(),
+		jws.TypeKey:        VPSDJWTType,
+		jws.ContentTypeKey: credential.VPContentType,
+		jws.AlgorithmKey:   key.Algorithm().String(),
+		jws.KeyIDKey:       key.KeyID(),
 	}
 	for k, v := range headers {
 		if err = jwsHeaders.Set(k, v); err != nil {
@@ -402,13 +421,30 @@ func VerifyVerifiablePresentation(sdJWT string, key jwk.Key) (*credential.Verifi
 		return nil, errors.New("invalid SD-JWT format")
 	}
 
-	jwsParts := strings.Split(parts[0], ".")
+	plainJWS := parts[0]
+	jwsParts := strings.Split(plainJWS, ".")
 	if len(jwsParts) != 3 {
-		return nil, errors.New("invalid JWT format")
+		return nil, errors.New("invalid JWS format")
 	}
 
-	if _, err = jws.Verify([]byte(parts[0]), jws.WithKey(key.Algorithm(), key)); err != nil {
-		return nil, fmt.Errorf("invalid JWT signature: %w", err)
+	if _, err := jws.Verify([]byte(plainJWS), jws.WithKey(key.Algorithm(), key)); err != nil {
+		return nil, fmt.Errorf("invalid JWS signature: %w", err)
+	}
+
+	// Check expected cty and typ headers
+	parsed, err := jws.Parse([]byte(plainJWS))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JWS payload: %w", err)
+	}
+	if len(parsed.Signatures()) != 1 {
+		return nil, errors.New("expected exactly one signature")
+	}
+	headers := parsed.Signatures()[0].ProtectedHeaders()
+	if typ := headers.Type(); typ != VPSDJWTType {
+		return nil, fmt.Errorf("unexpected type: %s", typ)
+	}
+	if cty := headers.ContentType(); cty != credential.VPContentType {
+		return nil, fmt.Errorf("unexpected content type: %s", cty)
 	}
 
 	return vp, nil

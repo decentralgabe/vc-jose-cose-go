@@ -10,6 +10,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/decentralgabe/vc-jose-cose-go/credential"
 )
@@ -41,16 +42,16 @@ func SignVerifiableCredential(vc credential.VerifiableCredential, key jwk.Key) (
 
 	// Add standard claims
 	if !vc.Issuer.IsEmpty() {
-		vcMap["iss"] = vc.Issuer.ID()
+		vcMap[jwt.IssuerKey] = vc.Issuer.ID()
 	}
 	if vc.ID != "" {
-		vcMap["jti"] = vc.ID
+		vcMap[jwt.JwtIDKey] = vc.ID
 	}
 	if vc.ValidFrom != "" {
-		vcMap["iat"] = vc.ValidFrom
+		vcMap[jwt.IssuedAtKey] = vc.ValidFrom
 	}
 	if vc.ValidUntil != "" {
-		vcMap["exp"] = vc.ValidUntil
+		vcMap[jwt.ExpirationKey] = vc.ValidUntil
 	}
 
 	// Marshal the claims to JSON
@@ -62,10 +63,10 @@ func SignVerifiableCredential(vc credential.VerifiableCredential, key jwk.Key) (
 	// Add protected header values
 	jwsHeaders := jws.NewHeaders()
 	headers := map[string]string{
-		"typ": VCJOSEType,
-		"cty": credential.VCContentType,
-		"alg": key.Algorithm().String(),
-		"kid": key.KeyID(),
+		jws.TypeKey:        VCJOSEType,
+		jws.ContentTypeKey: credential.VCContentType,
+		jws.AlgorithmKey:   key.Algorithm().String(),
+		jws.KeyIDKey:       key.KeyID(),
 	}
 	for k, v := range headers {
 		if err = jwsHeaders.Set(k, v); err != nil {
@@ -84,8 +85,8 @@ func SignVerifiableCredential(vc credential.VerifiableCredential, key jwk.Key) (
 }
 
 // VerifyVerifiableCredential verifies a VerifiableCredential JWT using the provided key.
-func VerifyVerifiableCredential(jwt string, key jwk.Key) (*credential.VerifiableCredential, error) {
-	if jwt == "" {
+func VerifyVerifiableCredential(encodedJWT string, key jwk.Key) (*credential.VerifiableCredential, error) {
+	if encodedJWT == "" {
 		return nil, errors.New("JWT is required")
 	}
 	if key == nil {
@@ -99,13 +100,28 @@ func VerifyVerifiableCredential(jwt string, key jwk.Key) (*credential.Verifiable
 	}
 
 	// Verify the JWT signature and get the payload
-	payload, err := jws.Verify([]byte(jwt), jws.WithKey(key.Algorithm(), key))
+	if _, err := jws.Verify([]byte(encodedJWT), jws.WithKey(key.Algorithm(), key)); err != nil {
+		return nil, fmt.Errorf("invalid JWS signature: %w", err)
+	}
+
+	// Check expected cty and typ headers
+	parsed, err := jws.Parse([]byte(encodedJWT))
 	if err != nil {
-		return nil, fmt.Errorf("invalid JWT signature: %w", err)
+		return nil, fmt.Errorf("failed to parse JWS payload: %w", err)
+	}
+	if len(parsed.Signatures()) != 1 {
+		return nil, errors.New("expected exactly one signature")
+	}
+	headers := parsed.Signatures()[0].ProtectedHeaders()
+	if typ := headers.Type(); typ != VCJOSEType {
+		return nil, fmt.Errorf("unexpected type: %s", typ)
+	}
+	if cty := headers.ContentType(); cty != credential.VCContentType {
+		return nil, fmt.Errorf("unexpected content type: %s", cty)
 	}
 
 	// Unmarshal the payload into VerifiableCredential
-	vc, err := credential.DecodeVC(payload)
+	vc, err := credential.DecodeVC(parsed.Payload())
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiableCredential: %w", err)
 	}
@@ -132,7 +148,7 @@ func SignVerifiablePresentation(vp credential.VerifiablePresentation, key jwk.Ke
 	kty := key.KeyType()
 	switch kty {
 	case jwa.EC:
-		crv, ok := key.Get("crv")
+		crv, ok := key.Get(jwk.ECDSACrvKey)
 		if !ok || crv == nil {
 			return nil, fmt.Errorf("invalid or missing 'crv' parameter")
 		}
@@ -165,16 +181,16 @@ func SignVerifiablePresentation(vp credential.VerifiablePresentation, key jwk.Ke
 
 	// Add standard claims
 	if !vp.Holder.IsEmpty() {
-		vpMap["iss"] = vp.Holder.ID()
+		vpMap[jwt.IssuerKey] = vp.Holder.ID()
 	}
 	if vp.ID != "" {
-		vpMap["jti"] = vp.ID
+		vpMap[jwt.JwtIDKey] = vp.ID
 	}
 
-	vpMap["iat"] = time.Now().Unix()
+	vpMap[jwt.IssuedAtKey] = time.Now().Unix()
 
 	// TODO(gabe): allow this to be configurable
-	vpMap["exp"] = time.Now().Add(time.Hour * 24).Unix()
+	vpMap[jwt.ExpirationKey] = time.Now().Add(time.Hour * 24).Unix()
 
 	// Marshal the claims to JSON
 	payload, err := json.Marshal(vpMap)
@@ -185,10 +201,10 @@ func SignVerifiablePresentation(vp credential.VerifiablePresentation, key jwk.Ke
 	// Add protected header values
 	jwsHeaders := jws.NewHeaders()
 	headers := map[string]string{
-		"typ": VPJOSEType,
-		"cty": credential.VPContentType,
-		"alg": alg.String(),
-		"kid": key.KeyID(),
+		jws.TypeKey:        VPJOSEType,
+		jws.ContentTypeKey: credential.VPContentType,
+		jws.AlgorithmKey:   alg.String(),
+		jws.KeyIDKey:       key.KeyID(),
 	}
 	for k, v := range headers {
 		if err = jwsHeaders.Set(k, v); err != nil {
@@ -208,8 +224,8 @@ func SignVerifiablePresentation(vp credential.VerifiablePresentation, key jwk.Ke
 
 // VerifyVerifiablePresentation verifies a VerifiablePresentation JWT using the provided key.
 // TODO(gabe) this does not yet validate signatures of credentials in the presentation
-func VerifyVerifiablePresentation(jwt string, key jwk.Key) (*credential.VerifiablePresentation, error) {
-	if jwt == "" {
+func VerifyVerifiablePresentation(encodedJWT string, key jwk.Key) (*credential.VerifiablePresentation, error) {
+	if encodedJWT == "" {
 		return nil, errors.New("JWT is required")
 	}
 	if key == nil {
@@ -223,9 +239,25 @@ func VerifyVerifiablePresentation(jwt string, key jwk.Key) (*credential.Verifiab
 	}
 
 	// Verify the JWT signature and get the payload
-	payload, err := jws.Verify([]byte(jwt), jws.WithKey(key.Algorithm(), key))
+	payload, err := jws.Verify([]byte(encodedJWT), jws.WithKey(key.Algorithm(), key))
 	if err != nil {
-		return nil, fmt.Errorf("invalid JWT signature: %w", err)
+		return nil, fmt.Errorf("invalid JWS signature: %w", err)
+	}
+
+	// Check expected cty and typ headers
+	parsed, err := jws.Parse([]byte(encodedJWT))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JWS payload: %w", err)
+	}
+	if len(parsed.Signatures()) != 1 {
+		return nil, errors.New("expected exactly one signature")
+	}
+	headers := parsed.Signatures()[0].ProtectedHeaders()
+	if typ := headers.Type(); typ != VPJOSEType {
+		return nil, fmt.Errorf("unexpected type: %s", typ)
+	}
+	if cty := headers.ContentType(); cty != credential.VPContentType {
+		return nil, fmt.Errorf("unexpected content type: %s", cty)
 	}
 
 	// Unmarshal the payload into VerifiablePresentation
