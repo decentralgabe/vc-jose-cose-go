@@ -132,6 +132,11 @@ func VerifyVerifiableCredential(payload []byte, key jwk.Key) (*credential.Verifi
 		return nil, fmt.Errorf("unexpected type: %s", typ)
 	}
 
+	// Check that the payload does not contain "vc" or "vp"
+	if err := credential.HasVCorVPClaim(message.Payload); err != nil {
+		return nil, fmt.Errorf("payload has invalid claims: %w", err)
+	}
+	
 	// Unmarshal the payload into VerifiableCredential
 	vc, err := credential.DecodeVC(message.Payload)
 	if err != nil {
@@ -253,6 +258,11 @@ func VerifyVerifiablePresentation(payload []byte, key jwk.Key) (*credential.Veri
 	typ := message.Headers.Protected[cose.HeaderLabelType]
 	if typ != VPCOSEType {
 		return nil, fmt.Errorf("unexpected type: %s", typ)
+	}
+
+	// Check that the payload does not contain "vc" or "vp"
+	if err := credential.HasVCorVPClaim(message.Payload); err != nil {
+		return nil, fmt.Errorf("payload has invalid claims: %w", err)
 	}
 
 	// Unmarshal the payload into VerifiablePresentation

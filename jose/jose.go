@@ -120,6 +120,11 @@ func VerifyVerifiableCredential(encodedJWT string, key jwk.Key) (*credential.Ver
 		return nil, fmt.Errorf("unexpected content type: %s", cty)
 	}
 
+	// Check that the payload does not contain "vc" or "vp"
+	if err := credential.HasVCorVPClaim(parsed.Payload()); err != nil {
+		return nil, fmt.Errorf("payload has invalid claims: %w", err)
+	}
+
 	// Unmarshal the payload into VerifiableCredential
 	vc, err := credential.DecodeVC(parsed.Payload())
 	if err != nil {
@@ -258,6 +263,11 @@ func VerifyVerifiablePresentation(encodedJWT string, key jwk.Key) (*credential.V
 	}
 	if cty := headers.ContentType(); cty != credential.VPContentType {
 		return nil, fmt.Errorf("unexpected content type: %s", cty)
+	}
+
+	// Check that the payload does not contain "vc" or "vp"
+	if err := credential.HasVCorVPClaim(parsed.Payload()); err != nil {
+		return nil, fmt.Errorf("payload has invalid claims: %w", err)
 	}
 
 	// Unmarshal the payload into VerifiablePresentation

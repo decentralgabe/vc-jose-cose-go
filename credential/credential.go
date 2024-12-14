@@ -244,3 +244,21 @@ func DecodeVP(data []byte) (*VerifiablePresentation, error) {
 	}
 	return &vp, nil
 }
+
+// HasVCorVPClaim checks if the payload contains either a "vc" or "vp" claim.
+func HasVCorVPClaim(payload []byte) error {
+	var payloadMap map[string]any
+	if err := json.Unmarshal(payload, &payloadMap); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	if _, hasVC := payloadMap["vc"]; hasVC {
+		return fmt.Errorf("payload contains 'vc' claim, which is not allowed")
+	}
+
+	if _, hasVP := payloadMap["vp"]; hasVP {
+		return fmt.Errorf("payload contains 'vp' claim, which is not allowed")
+	}
+
+	return nil
+}
