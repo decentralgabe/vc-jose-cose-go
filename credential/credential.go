@@ -42,6 +42,7 @@ type VerifiableCredential struct {
 	CredentialStatus  util.SingleOrArray[any]    `json:"credentialStatus,omitempty"`
 	TermsOfUse        util.SingleOrArray[any]    `json:"termsOfUse,omitempty"`
 	Evidence          util.SingleOrArray[any]    `json:"evidence,omitempty"`
+	RefreshService    util.SingleOrArray[any]    `json:"refreshService,omitempty"`
 
 	// JWT claims that may be present in the credential
 	Iss string `json:"iss,omitempty"`
