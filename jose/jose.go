@@ -13,6 +13,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/decentralgabe/vc-jose-cose-go/credential"
+	"github.com/decentralgabe/vc-jose-cose-go/validation"
 )
 
 const (
@@ -121,12 +122,12 @@ func VerifyVerifiableCredential(encodedJWT string, key jwk.Key) (*credential.Ver
 	}
 
 	// Check that the payload does not contain "vc" or "vp"
-	if err := credential.HasVCorVPClaim(parsed.Payload()); err != nil {
+	if err = validation.HasVCorVPClaim(parsed.Payload()); err != nil {
 		return nil, fmt.Errorf("payload has invalid claims: %w", err)
 	}
 
 	// Unmarshal the payload into VerifiableCredential
-	vc, err := credential.DecodeVC(parsed.Payload())
+	vc, err := validation.DecodeVC(parsed.Payload())
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiableCredential: %w", err)
 	}
@@ -266,14 +267,21 @@ func VerifyVerifiablePresentation(encodedJWT string, key jwk.Key) (*credential.V
 	}
 
 	// Check that the payload does not contain "vc" or "vp"
-	if err := credential.HasVCorVPClaim(parsed.Payload()); err != nil {
+	if err = validation.HasVCorVPClaim(parsed.Payload()); err != nil {
 		return nil, fmt.Errorf("payload has invalid claims: %w", err)
 	}
 
 	// Unmarshal the payload into VerifiablePresentation
-	vp, err := credential.DecodeVP(payload)
+	vp, err := validation.DecodeVP(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiablePresentation: %w", err)
+	}
+
+	// Make sure the credentials in the presentation are well-formed
+	if len(vp.VerifiableCredential) != 0 {
+		if err = validation.ValidateVerifiableCredentials(vp.VerifiableCredential); err != nil {
+			return nil, fmt.Errorf("failed to validate Verifiable Credentials in Verifiable Presentation: %w", err)
+		}
 	}
 
 	return vp, nil

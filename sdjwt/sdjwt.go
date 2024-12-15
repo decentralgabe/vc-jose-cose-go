@@ -16,6 +16,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/decentralgabe/vc-jose-cose-go/credential"
+	"github.com/decentralgabe/vc-jose-cose-go/validation"
 )
 
 const (
@@ -258,7 +259,7 @@ func VerifyVerifiableCredential(sdJWT string, key jwk.Key) (*credential.Verifiab
 	}
 
 	// Unmarshal the payload into VerifiableCredential
-	vc, err := credential.DecodeVC(vcBytes)
+	vc, err := validation.DecodeVC(vcBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiableCredential: %w", err)
 	}
@@ -275,7 +276,7 @@ func VerifyVerifiableCredential(sdJWT string, key jwk.Key) (*credential.Verifiab
 		return nil, errors.New("invalid JWS format")
 	}
 
-	if _, err := jws.Verify([]byte(plainJWS), jws.WithKey(key.Algorithm(), key)); err != nil {
+	if _, err = jws.Verify([]byte(plainJWS), jws.WithKey(key.Algorithm(), key)); err != nil {
 		return nil, fmt.Errorf("invalid JWS signature: %w", err)
 	}
 
@@ -296,7 +297,7 @@ func VerifyVerifiableCredential(sdJWT string, key jwk.Key) (*credential.Verifiab
 	}
 
 	// Check that the payload does not contain "vc" or "vp"
-	if err := credential.HasVCorVPClaim(parsed.Payload()); err != nil {
+	if err = validation.HasVCorVPClaim(parsed.Payload()); err != nil {
 		return nil, fmt.Errorf("payload has invalid claims: %w", err)
 	}
 
@@ -415,7 +416,7 @@ func VerifyVerifiablePresentation(sdJWT string, key jwk.Key) (*credential.Verifi
 	}
 
 	// Unmarshal the payload into VerifiablePresentation
-	vp, err := credential.DecodeVP(vpBytes)
+	vp, err := validation.DecodeVP(vpBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiablePresentation: %w", err)
 	}
@@ -432,7 +433,7 @@ func VerifyVerifiablePresentation(sdJWT string, key jwk.Key) (*credential.Verifi
 		return nil, errors.New("invalid JWS format")
 	}
 
-	if _, err := jws.Verify([]byte(plainJWS), jws.WithKey(key.Algorithm(), key)); err != nil {
+	if _, err = jws.Verify([]byte(plainJWS), jws.WithKey(key.Algorithm(), key)); err != nil {
 		return nil, fmt.Errorf("invalid JWS signature: %w", err)
 	}
 
@@ -453,8 +454,15 @@ func VerifyVerifiablePresentation(sdJWT string, key jwk.Key) (*credential.Verifi
 	}
 
 	// Check that the payload does not contain "vc" or "vp"
-	if err := credential.HasVCorVPClaim(parsed.Payload()); err != nil {
+	if err = validation.HasVCorVPClaim(parsed.Payload()); err != nil {
 		return nil, fmt.Errorf("payload has invalid claims: %w", err)
+	}
+
+	// Make sure the credentials in the presentation are well-formed
+	if len(vp.VerifiableCredential) != 0 {
+		if err = validation.ValidateVerifiableCredentials(vp.VerifiableCredential); err != nil {
+			return nil, fmt.Errorf("failed to validate Verifiable Credentials in Verifiable Presentation: %w", err)
+		}
 	}
 
 	return vp, nil

@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+
+	"github.com/decentralgabe/vc-jose-cose-go/validation"
 	"github.com/goccy/go-json"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -133,12 +135,12 @@ func VerifyVerifiableCredential(payload []byte, key jwk.Key) (*credential.Verifi
 	}
 
 	// Check that the payload does not contain "vc" or "vp"
-	if err := credential.HasVCorVPClaim(message.Payload); err != nil {
+	if err = validation.HasVCorVPClaim(message.Payload); err != nil {
 		return nil, fmt.Errorf("payload has invalid claims: %w", err)
 	}
-	
+
 	// Unmarshal the payload into VerifiableCredential
-	vc, err := credential.DecodeVC(message.Payload)
+	vc, err := validation.DecodeVC(message.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiableCredential: %w", err)
 	}
@@ -261,14 +263,21 @@ func VerifyVerifiablePresentation(payload []byte, key jwk.Key) (*credential.Veri
 	}
 
 	// Check that the payload does not contain "vc" or "vp"
-	if err := credential.HasVCorVPClaim(message.Payload); err != nil {
+	if err = validation.HasVCorVPClaim(message.Payload); err != nil {
 		return nil, fmt.Errorf("payload has invalid claims: %w", err)
 	}
 
 	// Unmarshal the payload into VerifiablePresentation
-	vp, err := credential.DecodeVP(message.Payload)
+	vp, err := validation.DecodeVP(message.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal VerifiablePresentation: %w", err)
+	}
+
+	// Make sure the credentials in the presentation are well-formed
+	if len(vp.VerifiableCredential) != 0 {
+		if err = validation.ValidateVerifiableCredentials(vp.VerifiableCredential); err != nil {
+			return nil, fmt.Errorf("failed to validate Verifiable Credentials in Verifiable Presentation: %w", err)
+		}
 	}
 
 	return vp, nil

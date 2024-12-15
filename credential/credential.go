@@ -1,11 +1,9 @@
 package credential
 
 import (
-	"bytes"
 	"fmt"
-	"reflect"
-
 	"github.com/goccy/go-json"
+	"reflect"
 
 	"github.com/decentralgabe/vc-jose-cose-go/util"
 )
@@ -221,44 +219,4 @@ func (vp *VerifiablePresentation) IsEmpty() bool {
 
 func (vp *VerifiablePresentation) IsValid() error {
 	return util.NewValidator().Struct(vp)
-}
-
-// DecodeVC decodes a VerifiableCredential from a byte slice and returns an error if the data contains unknown fields.
-func DecodeVC(data []byte) (*VerifiableCredential, error) {
-	var vc VerifiableCredential
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&vc); err != nil {
-		return nil, fmt.Errorf("unknown field in credential: %w", err)
-	}
-	return &vc, nil
-}
-
-// DecodeVP decodes a VerifiablePresentation from a byte slice and returns an error if the data contains unknown fields.
-func DecodeVP(data []byte) (*VerifiablePresentation, error) {
-	var vp VerifiablePresentation
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&vp); err != nil {
-		return nil, fmt.Errorf("unknown field in presentation: %w", err)
-	}
-	return &vp, nil
-}
-
-// HasVCorVPClaim checks if the payload contains either a "vc" or "vp" claim.
-func HasVCorVPClaim(payload []byte) error {
-	var payloadMap map[string]any
-	if err := json.Unmarshal(payload, &payloadMap); err != nil {
-		return fmt.Errorf("failed to unmarshal payload: %w", err)
-	}
-
-	if _, hasVC := payloadMap["vc"]; hasVC {
-		return fmt.Errorf("payload contains 'vc' claim, which is not allowed")
-	}
-
-	if _, hasVP := payloadMap["vp"]; hasVP {
-		return fmt.Errorf("payload contains 'vp' claim, which is not allowed")
-	}
-
-	return nil
 }

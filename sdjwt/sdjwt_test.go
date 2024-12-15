@@ -271,14 +271,9 @@ func Test_Sign_Verify_VerifiablePresentation(t *testing.T) {
 		Holder:  credential.NewIssuerHolderFromString("did:example:holder"),
 		VerifiableCredential: []credential.VerifiableCredential{
 			{
-				Context:   []string{"https://www.w3.org/2018/credentials/v1"},
-				ID:        "https://example.edu/credentials/1872",
-				Type:      []string{"VerifiableCredential"},
-				Issuer:    credential.NewIssuerHolderFromString("did:example:issuer"),
-				ValidFrom: "2010-01-01T19:23:24Z",
-				CredentialSubject: map[string]any{
-					"id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
-				},
+				Context: []string{"https://www.w3.org/2018/credentials/v1"},
+				Type:    []string{"EnvelopedVerifiableCredential"},
+				ID:      "data:application/vc+jwt,eyJhbGciOiJFUzI1NiIsImN0eSI6InZjIiwia2lkIjoiNzN2b01YRk5tTmxPRXB1WUNTSmxoOGVOMGRzY3lrb082Z0J1a2dSUzF1VSIsInR5cCI6InZjK2p3dCJ9.eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvbnMvY3JlZGVudGlhbHMvdjIiLCJodHRwczovL3d3dy53My5vcmcvbnMvY3JlZGVudGlhbHMvZXhhbXBsZXMvdjIiXSwiY3JlZGVudGlhbFNjaGVtYSI6eyJpZCI6Imh0dHBzOi8vZXhhbXBsZS5vcmcvZXhhbXBsZXMvZGVncmVlLmpzb24iLCJ0eXBlIjoiSnNvblNjaGVtYSJ9LCJjcmVkZW50aWFsU3ViamVjdCI6eyJkZWdyZWUiOnsibmFtZSI6IkJhY2hlbG9yIG9mIFNjaWVuY2UgYW5kIEFydHMiLCJ0eXBlIjoiQmFjaGVsb3JEZWdyZWUifSwiaWQiOiJkaWQ6ZXhhbXBsZToxMjMifSwiaWF0IjoiMjAxMC0wMS0wMVQxOToyMzoyNFoiLCJpZCI6Imh0dHA6Ly91bml2ZXJzaXR5LmV4YW1wbGUvY3JlZGVudGlhbHMvMTg3MiIsImlzcyI6Imh0dHBzOi8vZXhhbXBsZS5pc3N1ZXIvdmMtam9zZS1jb3NlIiwiaXNzdWVyIjoiaHR0cHM6Ly9leGFtcGxlLmlzc3Vlci92Yy1qb3NlLWNvc2UiLCJqdGkiOiJodHRwOi8vdW5pdmVyc2l0eS5leGFtcGxlL2NyZWRlbnRpYWxzLzE4NzIiLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiRXhhbXBsZUFsdW1uaUNyZWRlbnRpYWwiXSwidmFsaWRGcm9tIjoiMjAxMC0wMS0wMVQxOToyMzoyNFoifQ.-X6A--TnCgeepna-dXn7j6_q2DfQzjiYdEc-pbaHR38JUIv5ubhjYp2Tb_LJuJInzI7qKfP-JcMlHdd6bDnOLw",
 			},
 		},
 	}
@@ -294,28 +289,28 @@ func Test_Sign_Verify_VerifiablePresentation(t *testing.T) {
 			name:  "EC P-256 with simple presentation disclosure",
 			curve: jwa.P256,
 			disclosurePaths: []DisclosurePath{
-				"holder",
-				"verifiableCredential[0].credentialSubject.id",
+				"type",
+				"verifiableCredential[0].id",
 			},
 			vp: &simpleVP,
 			verifyFields: func(t *testing.T, vp *credential.VerifiablePresentation) {
-				assert.Equal(t, "did:example:holder", vp.Holder.ID())
+				assert.Contains(t, vp.Type, "VerifiablePresentation")
 				assert.Len(t, vp.VerifiableCredential, 1)
-				assert.Equal(t, "did:example:ebfeb1f712ebc6f1c276e12ec21", vp.VerifiableCredential[0].CredentialSubject["id"])
+				assert.Contains(t, vp.VerifiableCredential[0].ID, "data:application/vc+jwt,")
 			},
 		},
 		{
 			name:  "EC P-384 with simple presentation disclosure",
 			curve: jwa.P384,
 			disclosurePaths: []DisclosurePath{
-				"holder",
-				"verifiableCredential[0].credentialSubject.id",
+				"id",
+				"verifiableCredential[0].type",
 			},
 			vp: &simpleVP,
 			verifyFields: func(t *testing.T, vp *credential.VerifiablePresentation) {
-				assert.Equal(t, "did:example:holder", vp.Holder.ID())
+				assert.Equal(t, vp.ID, "urn:uuid:3978344f-8596-4c3a-a978-8fcaba3903c5")
 				assert.Len(t, vp.VerifiableCredential, 1)
-				assert.Equal(t, "did:example:ebfeb1f712ebc6f1c276e12ec21", vp.VerifiableCredential[0].CredentialSubject["id"])
+				assert.Contains(t, vp.VerifiableCredential[0].Type, "EnvelopedVerifiableCredential")
 			},
 		},
 		{
@@ -323,27 +318,27 @@ func Test_Sign_Verify_VerifiablePresentation(t *testing.T) {
 			curve: jwa.P521,
 			disclosurePaths: []DisclosurePath{
 				"holder",
-				"verifiableCredential[0].credentialSubject.id",
+				"verifiableCredential[0].id",
 			},
 			vp: &simpleVP,
 			verifyFields: func(t *testing.T, vp *credential.VerifiablePresentation) {
-				assert.Equal(t, "did:example:holder", vp.Holder.ID())
+				assert.Equal(t, vp.Holder.ID(), "did:example:holder")
 				assert.Len(t, vp.VerifiableCredential, 1)
-				assert.Equal(t, "did:example:ebfeb1f712ebc6f1c276e12ec21", vp.VerifiableCredential[0].CredentialSubject["id"])
+				assert.Contains(t, vp.VerifiableCredential[0].ID, "data:application/vc+jwt,")
 			},
 		},
 		{
 			name:  "OKP EdDSA with simple presentation disclosure",
 			curve: jwa.Ed25519,
 			disclosurePaths: []DisclosurePath{
-				"holder",
-				"verifiableCredential[0].credentialSubject.id",
+				"type",
+				"verifiableCredential[0].id",
 			},
 			vp: &simpleVP,
 			verifyFields: func(t *testing.T, vp *credential.VerifiablePresentation) {
-				assert.Equal(t, "did:example:holder", vp.Holder.ID())
+				assert.Contains(t, vp.Type, "VerifiablePresentation")
 				assert.Len(t, vp.VerifiableCredential, 1)
-				assert.Equal(t, "did:example:ebfeb1f712ebc6f1c276e12ec21", vp.VerifiableCredential[0].CredentialSubject["id"])
+				assert.Contains(t, vp.VerifiableCredential[0].ID, "data:application/vc+jwt,")
 			},
 		},
 	}
