@@ -2,7 +2,9 @@ package validation
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
+	sdjwt "github.com/MichaelFraser99/go-sd-jwt"
 	"github.com/decentralgabe/vc-jose-cose-go/credential"
 	"github.com/goccy/go-json"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -56,10 +58,10 @@ func GetValidDataURLPrefixes() []string {
 	return []string{
 		"data:application/vc+jwt,",
 		"data:application/vc+sd-jwt,",
-		"data:application/vc+cose;base64",
+		"data:application/vc+cose;base64,",
 		"data:application/vp+jwt,",
 		"data:application/vp+sd-jwt,",
-		"data:application/vp+cose;base64",
+		"data:application/vp+cose;base64,",
 	}
 }
 
@@ -96,13 +98,21 @@ func ValidateVerifiableCredentials(creds []credential.VerifiableCredential) erro
 
 		// Validate the data is well-formed according to its format
 		switch {
-		case strings.Contains(matchedPrefix, "jwt") || strings.Contains(matchedPrefix, "sd-jwt"):
+		case strings.Contains(matchedPrefix, "+jwt"):
 			if _, err := jws.Parse([]byte(encodedData)); err != nil {
-				return fmt.Errorf("failed to parse JOSE/SD-JWT content from data-url: %w", err)
+				return fmt.Errorf("failed to parse JOSE content from data-url: %w", err)
 			}
-		case strings.Contains(matchedPrefix, "cose"):
+		case strings.Contains(matchedPrefix, "+sd-jwt"):
+			if _, err := sdjwt.New(encodedData); err != nil {
+				return fmt.Errorf("failed to parse SD-JWT content from data-url: %w", err)
+			}
+		case strings.Contains(matchedPrefix, "+cose"):
+			decodedCBOR, err := base64.RawStdEncoding.DecodeString(encodedData)
+			if err != nil {
+				return fmt.Errorf("failed to decode base64 content from data-url: %w", err)
+			}
 			var message cose.Sign1Message
-			if err := message.UnmarshalCBOR([]byte(encodedData)); err != nil {
+			if err = message.UnmarshalCBOR(decodedCBOR); err != nil {
 				return fmt.Errorf("failed to parse COSE content from data-url: %w", err)
 			}
 		default:
