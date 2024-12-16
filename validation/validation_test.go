@@ -1,12 +1,13 @@
 package validation
 
 import (
+	"testing"
+
 	"github.com/decentralgabe/vc-jose-cose-go/credential"
 	"github.com/decentralgabe/vc-jose-cose-go/util"
 	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestUnknownFields(t *testing.T) {

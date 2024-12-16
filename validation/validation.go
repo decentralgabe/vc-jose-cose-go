@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"strings"
+
 	sdjwt "github.com/MichaelFraser99/go-sd-jwt"
 	"github.com/decentralgabe/vc-jose-cose-go/credential"
 	"github.com/goccy/go-json"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/veraison/go-cose"
-	"strings"
 )
 
 // DecodeVC decodes a VerifiableCredential from a byte slice and returns an error if the data contains unknown fields.

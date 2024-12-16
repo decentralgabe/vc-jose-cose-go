@@ -2,10 +2,10 @@ package credential
 
 import (
 	"fmt"
-	"github.com/goccy/go-json"
 	"reflect"
 
 	"github.com/decentralgabe/vc-jose-cose-go/util"
+	"github.com/goccy/go-json"
 )
 
 const (

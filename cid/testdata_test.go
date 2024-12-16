@@ -3,11 +3,12 @@ package cid
 import (
 	"embed"
 	"encoding/base64"
+	"testing"
+
 	"github.com/decentralgabe/vc-jose-cose-go/cose"
 	"github.com/decentralgabe/vc-jose-cose-go/credential"
 	"github.com/decentralgabe/vc-jose-cose-go/jose"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/goccy/go-json"
 
